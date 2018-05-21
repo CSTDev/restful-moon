@@ -22,6 +22,6 @@ var routes = Routes{
 		"HealthCheck",
 		"GET",
 		"/",
-		handler.HealthCheck,
+		handler.HealthCheck(),
 	},
 }
