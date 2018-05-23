@@ -15,7 +15,7 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 
 func main() {
 	db := "mongo:\\\\"
-	var service = &moonboard.WebService{&db}
+	var service = &moonboard.WebService{DB: &db}
 
 	router := moonboard.NewRouter(service)
 

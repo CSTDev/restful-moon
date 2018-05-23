@@ -36,6 +36,9 @@ func initRoutes(service Service) {
 	}
 }
 
+// NewRouter takes a Service and creates an mux.Router
+// Is uses the methods of the Service to associate the handlers
+// to their implementations
 func NewRouter(s Service) *mux.Router {
 	initRoutes(s)
 	router := mux.NewRouter().StrictSlash(true)
