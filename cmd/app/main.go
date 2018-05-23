@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/cstdev/restful-moon/router"
+	"github.com/cstdev/restful-moon/moonboard"
 	"github.com/rs/cors"
 )
 
@@ -14,6 +14,10 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 }
 
 func main() {
-	router := router.NewRouter()
+	db := "mongo:\\\\"
+	var service = &moonboard.WebService{&db}
+
+	router := moonboard.NewRouter(service)
+
 	log.Fatal(http.ListenAndServe(":8000", setupGlobalMiddleware(router)))
 }
