@@ -33,6 +33,12 @@ func initRoutes(service Service) {
 			"/problems",
 			service.GetProblems(),
 		},
+		Route{
+			"NewAuthToken",
+			"POST",
+			"/authorisation",
+			service.Authorisation(),
+		},
 	}
 }
 

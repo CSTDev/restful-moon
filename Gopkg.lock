@@ -2,6 +2,40 @@
 
 
 [[projects]]
+  name = "github.com/PuerkitoBio/goquery"
+  packages = ["."]
+  revision = "dc2ec5c7ca4d9aae063b79b9f581dd3ea6afd2b2"
+  version = "v1.4.1"
+
+[[projects]]
+  name = "github.com/andybalholm/cascadia"
+  packages = ["."]
+  revision = "901648c87902174f774fac311d7f176f8647bdaa"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/cstdev/moonapi"
+  packages = [
+    ".",
+    "query",
+    "utils"
+  ]
+  revision = "6cbb7d2b3e9da5ff2888056b05a8b55d6c14e615"
+
+[[projects]]
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/glog"
+  packages = ["."]
+  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+
+[[projects]]
   name = "github.com/gorilla/context"
   packages = ["."]
   revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
@@ -14,14 +48,85 @@
   version = "v1.6.2"
 
 [[projects]]
+  name = "github.com/headzoo/surf"
+  packages = [
+    "agent",
+    "browser",
+    "errors",
+    "jar",
+    "util"
+  ]
+  revision = "60198774ccce43e1d26c80e961497b7d262460b3"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/rs/cors"
   packages = ["."]
   revision = "feef513b9575b32f84bafa580aad89b011259019"
   version = "v1.3.0"
 
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
+  version = "v1.0.6"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  revision = "f027049dab0ad238e394a753dba2d14753473a04"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = [
+    "html",
+    "html/atom",
+    "idna",
+    "publicsuffix"
+  ]
+  revision = "19491d39cadbd9cd33f26ca22cc89ba4ba38251c"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = [
+    "unix",
+    "windows"
+  ]
+  revision = "acbc56fc7007d2a01796d5bde54f39e3b3e95945"
+
+[[projects]]
+  name = "golang.org/x/text"
+  packages = [
+    "collate",
+    "collate/build",
+    "internal/colltab",
+    "internal/gen",
+    "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
+    "language",
+    "secure/bidirule",
+    "transform",
+    "unicode/bidi",
+    "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable"
+  ]
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
+
+[[projects]]
+  name = "gopkg.in/headzoo/surf.v1"
+  packages = ["."]
+  revision = "60198774ccce43e1d26c80e961497b7d262460b3"
+  version = "v1.0.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f6ea5b5fba7b588c08d52ffbe48d841fb55786ecbe2d61d7a7a8ef83f1acbc49"
+  inputs-digest = "66ba97db06936d3573b033eee99a2ac98b21241392b4ccef2ec89c50b9e36c19"
   solver-name = "gps-cdcl"
   solver-version = 1

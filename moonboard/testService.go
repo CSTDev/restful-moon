@@ -8,6 +8,11 @@ import (
 type TestService struct {
 }
 
+// Login for testing
+func (s *TestService) Login() http.HandlerFunc {
+	return nil
+}
+
 // GetProblems for testing
 func (s *TestService) GetProblems() http.HandlerFunc {
 	return nil
