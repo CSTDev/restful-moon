@@ -3,8 +3,9 @@ package moonboard
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 
@@ -32,17 +33,18 @@ type User struct {
 type Service interface {
 	HealthCheck() http.HandlerFunc
 	Authorisation() http.HandlerFunc
+	IsAuthenticated(h http.HandlerFunc) http.HandlerFunc
 	GetProblems() http.HandlerFunc
 }
 
 type SessionBuilder interface {
-	New(r *http.Request) moonapi.MoonBoard
+	New(r *http.Request) moonapi.MoonBoardApi
 }
 
 type WebServiceSession struct{}
 
-func (s *WebServiceSession) New(r *http.Request) moonapi.MoonBoard {
-	var auth []moonapi.AuthToken
+func (s *WebServiceSession) New(r *http.Request) moonapi.MoonBoardApi {
+	var authTokens []moonapi.AuthToken
 	moonAuth := moonapi.AuthToken{
 		Name:  "_MoonBoard",
 		Value: r.Header.Get("_Moonboard"),
@@ -51,17 +53,18 @@ func (s *WebServiceSession) New(r *http.Request) moonapi.MoonBoard {
 		Name:  "__RequestVerificationToken",
 		Value: r.Header.Get("__RequestVerificationToken"),
 	}
-	auth = append(auth, moonAuth)
-	auth = append(auth, reqToken)
+	authTokens = append(authTokens, moonAuth)
+	authTokens = append(authTokens, reqToken)
 
-	session := moonapi.MoonBoard{
-		Auth: auth,
-	}
+	session := moonapi.MoonBoard{}
+	session.SetAuth(authTokens)
+
 	return session
 }
 
 // WebService used to connect to the moonboard website
 type WebService struct {
+	JWTSecret      string
 	SessionBuilder SessionBuilder
 	MoonBoard      moonapi.MoonBoardApi
 }
@@ -90,6 +93,12 @@ func (s *WebService) HealthCheck() http.HandlerFunc {
 func checkConnection() (bool, error) {
 	//return utils.CheckConnection() //Need to do dep ensure to get latest moonapi
 	return false, nil
+}
+
+type CustomClaims struct {
+	MoonBoard string `json:"moonboard"`
+	RVT       string `json: "rvt"`
+	jwt.StandardClaims
 }
 
 // Authorisation takes login credentials, logs into MoonBoard.com
@@ -153,12 +162,18 @@ func (s *WebService) Authorisation() http.HandlerFunc {
 			return
 		}
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"MoonBoard": s.MoonBoard.GetAuth()[0],
-			"RVT":       s.MoonBoard.GetAuth()[1],
-		})
+		claims := CustomClaims{
+			s.MoonBoard.Auth()[0].Value,
+			s.MoonBoard.Auth()[1].Value,
+			jwt.StandardClaims{
+				ExpiresAt: time.Now().Add(time.Minute * 20).Unix(),
+				Issuer:    "RESTfulMoon",
+			},
+		}
 
-		mySigningKey := []byte("MySuperSecretKey") //TODO check if it matters what or where this is
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		mySigningKey := []byte(s.JWTSecret)
 		tokenString, err := token.SignedString(mySigningKey)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -184,6 +199,88 @@ func (s *WebService) Authorisation() http.HandlerFunc {
 	}
 }
 
+// IsAuthenticated wraps resources that the user must be authenticated for
+// it takes the authorisation token from the Authorisation header,
+// checks it is still valid and then adds it to the moonBoard object
+// within the service for later use.
+func (s *WebService) IsAuthenticated(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		headerAuthToken := r.Header.Get("Authorisation")
+		log.WithFields(log.Fields{
+			"authToken": headerAuthToken,
+		}).Debug("Checking if authenticated")
+		if headerAuthToken == "" {
+			resp, _ := json.Marshal(&ErrorResponse{Message: "no authorisation header set"})
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(resp)
+			return
+		}
+
+		authToken := strings.Replace(headerAuthToken, "Bearer ", "", -1)
+
+		token, err := jwt.ParseWithClaims(authToken, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(s.JWTSecret), nil
+		})
+
+		if err != nil {
+			v, ok := err.(*jwt.ValidationError)
+			if ok {
+				signatureInvalid := v.Inner == jwt.ErrSignatureInvalid
+				if signatureInvalid {
+					log.WithFields(log.Fields{
+						"status": http.StatusInternalServerError,
+						"error":  err.Error(),
+					}).Error("Unable to get token claims")
+					resp, _ := json.Marshal(&ErrorResponse{Message: "failed to handle auth token"})
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write(resp)
+					return
+
+				}
+				log.WithFields(log.Fields{
+					"status": http.StatusUnauthorized,
+					"error":  err.Error(),
+				}).Error("Invalid token")
+				resp, _ := json.Marshal(&ErrorResponse{Message: "invalid token"})
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write(resp)
+				return
+			}
+		}
+
+		claims, ok := token.Claims.(*CustomClaims)
+		if !ok {
+			log.WithFields(log.Fields{
+				"status": http.StatusInternalServerError,
+				"error":  err.Error(),
+			}).Error("Unable to get token claims")
+			resp, _ := json.Marshal(&ErrorResponse{Message: "failed to handle auth token"})
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(resp)
+			return
+		}
+
+		log.WithFields(log.Fields{
+			"moonboard": claims.MoonBoard,
+			"RVT":       claims.RVT,
+			"Expiry":    claims.ExpiresAt,
+		}).Debug("Checked token info")
+
+		moonBoardToken := moonapi.AuthToken{
+			Name:  "_moonboard",
+			Value: claims.MoonBoard,
+		}
+
+		requestVerificationToken := moonapi.AuthToken{
+			Name:  "__RequestVerificationToken",
+			Value: claims.RVT,
+		}
+
+		s.MoonBoard.SetAuth([]moonapi.AuthToken{moonBoardToken, requestVerificationToken})
+		h(w, r)
+	}
+}
+
 // GetProblems returns the problems that match the query parameters
 // passed in the request
 // Path: /problems
@@ -204,6 +301,7 @@ func (s *WebService) Authorisation() http.HandlerFunc {
 func (s *WebService) GetProblems() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
+		log.Debug("Getting problems")
 
 		query := &utils.RequestQuery{
 			Term:          r.URL.Query().Get("q"),
@@ -220,16 +318,23 @@ func (s *WebService) GetProblems() http.HandlerFunc {
 
 		reqQuery, err := query.Query()
 		if err != nil {
+			log.WithFields(log.Fields{
+				"status": http.StatusBadRequest,
+				"error":  err.Error(),
+			}).Error("Failed to create query")
 			w.WriteHeader(http.StatusBadRequest)
 			resp, _ := json.Marshal(&ErrorResponse{Message: err.Error()})
 			w.Write(resp)
 			return
 		}
-		fmt.Println(reqQuery)
-		session = s.SessionBuilder.New(r)
-		problems, err := session.GetProblems(reqQuery)
+
+		problems, err := s.MoonBoard.GetProblems(reqQuery)
 
 		if err != nil {
+			log.WithFields(log.Fields{
+				"status": http.StatusInternalServerError,
+				"error":  err.Error(),
+			}).Error("Failed to perform search")
 			w.WriteHeader(http.StatusInternalServerError)
 			resp, _ := json.Marshal(&ErrorResponse{Message: err.Error()})
 			w.Write(resp)

@@ -31,7 +31,7 @@ func initRoutes(service Service) {
 			"GetProblems",
 			"GET",
 			"/problems",
-			service.GetProblems(),
+			service.IsAuthenticated(service.GetProblems()),
 		},
 		Route{
 			"NewAuthToken",
